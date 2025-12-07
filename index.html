@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <title>THBC / MTEC Admin Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Ethers.js -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+  <link rel="stylesheet" href="admin-style.css" />
+  <script src="admin-config.js"></script>
+  <script src="admin-utils.js"></script>
+  <script src="admin-wallet.js"></script>
+  <script src="admin-app.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo-circle">ADM</div>
+        <div class="brand-text">
+          <div class="title">THBC / MTEC Admin Panel</div>
+          <div class="subtitle">Owner-only Control · Staking & Swap</div>
+        </div>
+      </div>
+      <div class="wallet-box">
+        <button id="btnConnect" class="btn primary">เชื่อมต่อกระเป๋า</button>
+        <div id="walletAddress" class="wallet-address">ยังไม่เชื่อมต่อ</div>
+      </div>
+    </header>
+
+    <main>
+      <section class="card warning" id="notOwnerSection" style="display:none;">
+        <h2>ไม่ได้เป็น Owner</h2>
+        <p>กระเป๋านี้ไม่ใช่ Owner ของสัญญา Staking หรือ Swap<br />จะไม่สามารถใช้คำสั่ง Admin ได้</p>
+        <p class="muted">
+          Staking Owner: <span id="stakingOwnerLabel">-</span><br />
+          Swap Owner: <span id="swapOwnerLabel">-</span>
+        </p>
+      </section>
+
+      <section class="card" id="adminSection" style="display:none;">
+        <h2>Staking Config (MTECStaking365)</h2>
+        <p class="muted">แก้ไข APY / Referral / Lock (วัน)</p>
+
+        <div class="grid-info">
+          <div class="info-item">
+            <span class="label">APY ปัจจุบัน</span>
+            <span id="infoApy" class="value">-</span>
+          </div>
+          <div class="info-item">
+            <span class="label">% Referral ปัจจุบัน</span>
+            <span id="infoReferral" class="value">-</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Lock Duration (วัน)</span>
+            <span id="infoLockDays" class="value">-</span>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <label>APY ใหม่ (%)</label>
+          <input id="inputApy" type="number" step="0.01" placeholder="30 (หมายถึง 30%)" />
+        </div>
+        <div class="field-row">
+          <label>Referral ใหม่ (%)</label>
+          <input id="inputReferral" type="number" step="0.01" placeholder="10 (หมายถึง 10%)" />
+        </div>
+        <div class="field-row">
+          <label>Lock ระยะเวลาใหม่ (วัน)</label>
+          <input id="inputLockDays" type="number" step="1" placeholder="365" />
+        </div>
+
+        <div class="actions">
+          <button id="btnUpdateStakingParams" class="btn primary full">อัปเดต Staking Params</button>
+        </div>
+      </section>
+
+      <section class="card" id="swapSection" style="display:none;">
+        <h2>Swap Rate Config (THBC → MTEC)</h2>
+        <p class="muted">กำหนดเรทภายในของสัญญา Swap</p>
+
+        <div class="grid-info">
+          <div class="info-item">
+            <span class="label">Rate Numerator</span>
+            <span id="infoRateNum" class="value">-</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Rate Denominator</span>
+            <span id="infoRateDen" class="value">-</span>
+          </div>
+          <div class="info-item">
+            <span class="label">แปลความหมาย</span>
+            <span id="infoRateHuman" class="value">-</span>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <label>Numerator (ตัวส่วนบน)</label>
+          <input id="inputRateNum" type="number" step="1" placeholder="1e18 (ตัวอย่าง 1 THBC = 1 MTEC)" />
+        </div>
+        <div class="field-row">
+          <label>Denominator (ตัวส่วนล่าง)</label>
+          <input id="inputRateDen" type="number" step="1" placeholder="1e18" />
+        </div>
+
+        <div class="actions">
+          <button id="btnUpdateRate" class="btn primary full">อัปเดตเรท Swap</button>
+        </div>
+      </section>
+
+      <section class="card" id="balancesSection" style="display:none;">
+        <h2>Balances & Withdraw</h2>
+        <p class="muted">ถอนเหรียญคงเหลือจากสัญญาไปยังกระเป๋า Owner</p>
+
+        <h3>ยอดในสัญญา Staking</h3>
+        <div class="grid-info">
+          <div class="info-item">
+            <span class="label">MTEC ใน Staking Contract</span>
+            <span id="infoStakingMtec" class="value">-</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="btnWithdrawStakingMtec" class="btn secondary full">
+            ถอน MTEC ทั้งหมดจาก Staking → Owner
+          </button>
+        </div>
+
+        <hr class="divider" />
+
+        <h3>ยอดในสัญญา Swap</h3>
+        <div class="grid-info">
+          <div class="info-item">
+            <span class="label">THBC ใน Swap Contract</span>
+            <span id="infoSwapThbc" class="value">-</span>
+          </div>
+          <div class="info-item">
+            <span class="label">MTEC ใน Swap Contract</span>
+            <span id="infoSwapMtec" class="value">-</span>
+          </div>
+        </div>
+        <div class="actions two">
+          <button id="btnWithdrawSwapThbc" class="btn secondary">
+            ถอน THBC ทั้งหมดจาก Swap
+          </button>
+          <button id="btnWithdrawSwapMtec" class="btn secondary">
+            ถอน MTEC ทั้งหมดจาก Swap
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      THBC / MTEC Admin · Owner-only · Kaojino Dragon Chain
+    </footer>
+  </div>
+</body>
+</html>
